@@ -5,6 +5,8 @@ import hashlib
 from fastapi import HTTPException
 from src.conf.Configurations import logger,categories
 import shutil
+from src.util.FileMetadataDatabaseUtility import FileMetadataDatabaseUtility
+import re
 
 
 class FileUtilities:
@@ -107,7 +109,8 @@ class FileUtilities:
                 'file_modified_date': self.__time_convert(stats.st_mtime),
                 'file_hash': self.__compute_hash(filepath),
                 'created_on': datetime.now(tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
-                'created_by': 'SYSTEM'
+                'created_by': 'SYSTEM',
+                'version_file': self.extract_version(file_name)
             }
 
             return dict_info
@@ -179,7 +182,8 @@ class FileUtilities:
         :return: A list of versioned files
 
         """
-        files = os.listdir(folder_path)
+        # files = os.listdir(folder_path)
+        files = FileMetadataDatabaseUtility().get_all_file_names()
         if file_name in files:
             files.remove(file_name)
         names = []
@@ -237,6 +241,24 @@ class FileUtilities:
 
         return res
 
+    def extract_version(self, filename):
+
+        """
+        Extract the version number from the filename.
+
+        :param filename: The name of the file from which to extract the version.
+        :return: A string representing the version number, or '0' if no version is found.
+        """
+
+        # Remove the file extension and convert to lowercase
+        name_without_ext = filename.rsplit('.', 1)[0].lower()
+
+        # Use regex to find the version number in the filename
+        match = re.search(r'(\d+(\.\d+)+)$', name_without_ext) or re.search(r'[\s.](\d+)$', name_without_ext)
+        if match:
+            return match.group(1)
+
+        return '0'
 
 if __name__ == "__main__":
     # Example usage
@@ -257,13 +279,13 @@ if __name__ == "__main__":
     #
     # print("Versioned files:", version_files)
 
-    # get created and modified dates
-    file_dates = file_utilities.get_dates(sample_file_name, sample_folder_path)
+    # # get created and modified dates
+    # file_dates = file_utilities.get_dates(sample_file_name, sample_folder_path)
+    #
+    # print("Created and modified dates:", file_dates)
+    #
+    # f = file_utilities.get_dates("abc.66.pdf", sample_folder_path)
 
-    print("Created and modified dates:", file_dates)
-
-    f = file_utilities.get_dates("abc.66.pdf", sample_folder_path)
+    f = file_utilities.list_versioned_files("abc.66.pdf", sample_folder_path)
 
     print(f)
-
-

@@ -46,7 +46,10 @@ class FileMetadataDatabaseUtility:
                         file_modified_date TIMESTAMP,
                         file_hash TEXT,
                         created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        created_by TEXT
+                        created_by TEXT,
+                        version_file TEXT DEFAULT '0',
+                        category SERIAL
+                        
                     );
                """)
 
@@ -70,8 +73,8 @@ class FileMetadataDatabaseUtility:
                   file_name, file_type,file_category, file_size, 
                   source_path, destination_path,
                   file_creation_date, file_modified_date, 
-                  file_hash, created_on, created_by
-              )VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                  file_hash, created_on, created_by, version_file
+              )VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
             """
 
             values = (
@@ -86,6 +89,8 @@ class FileMetadataDatabaseUtility:
                 file_info['file_hash'],
                 file_info['created_on'],
                 file_info['created_by'],
+                file_info.get('version_file', None)
+
             )
             self.cursor.execute(insert_query, values)
             self.conn.commit()
@@ -120,6 +125,28 @@ class FileMetadataDatabaseUtility:
         except Exception as e:
             logger.error(f"Error checking file hash: {e}")
             raise HTTPException(status_code=500, detail=f"An error occurred during file hash check: {e}")
+        finally:
+            # Close the cursor
+            self.cursor.close()
+            # Close the connection
+            self.conn.close()
+
+    def get_all_file_names(self):
+        """
+        Retrieve all file names from the database.
+
+        :return: A list of all file names.
+        """
+        try:
+            logger.info("Retrieving all file names from the database.")
+            select_query = "SELECT file_name FROM file_properties;"
+            self.cursor.execute(select_query)
+            file_names = [row[0] for row in self.cursor.fetchall()]
+            return file_names
+
+        except Exception as e:
+            logger.error(f"Error retrieving file names: {e}")
+            raise HTTPException(status_code=500, detail=f"An error occurred during file name retrieval: {e}")
         finally:
             # Close the cursor
             self.cursor.close()
