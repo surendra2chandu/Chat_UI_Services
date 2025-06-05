@@ -1,10 +1,10 @@
 FROM python:3.10.13-slim
 
-# ILW Python package index
-ARG ILW_PY_PKG_IDX_TOKEN_NAME
-ARG ILW_PY_PKG_IDX_TOKEN_VALUE
-
-ENV DOCKER_REGISTRY ilwcr.azurecr.us
+## ILW Python package index
+#ARG ILW_PY_PKG_IDX_TOKEN_NAME
+#ARG ILW_PY_PKG_IDX_TOKEN_VALUE
+#
+#ENV DOCKER_REGISTRY ilwcr.azurecr.us
 
 WORKDIR /code
 
@@ -15,4 +15,4 @@ RUN python -m pip install --upgrade --no-cache-dir pip && \
 
 COPY ./src /code/src
 
-CMD ["streamlit", "run", "src/frontend/UI.py","--server.address", "0.0.0.0", "--server.port","80"]
+CMD ["streamlit", "run", "src/ui/UI.py","--server.address", "0.0.0.0", "--server.port","80"]
