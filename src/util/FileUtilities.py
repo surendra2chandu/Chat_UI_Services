@@ -179,20 +179,25 @@ class FileUtilities:
 
         :param file_name: The name of the file to list
         :param folder_path: The folder path to search in
-        :return: A list of versioned files
+        :return: A tuple containing a list of versioned files and their category
 
         """
         # files = os.listdir(folder_path)
-        files = FileMetadataDatabaseUtility().get_all_file_names()
-        if file_name in files:
-            files.remove(file_name)
+        file_records = FileMetadataDatabaseUtility().get_all_file_names()
+
+        file_dict = {name: category for name, category in file_records}
+
+        if file_name in file_dict.keys():
+            file_dict.pop(file_name)
+
         names = []
         try:
             file_name_with_out_ext = file_name.split('.')[0]
 
-            for name in files:
+            for name, category in file_dict.items():
                 if file_name_with_out_ext == name.split('.')[0]:
                     names.append(name)
+                    file_category = category
 
             if names:
                 versioned_files = []
@@ -202,9 +207,9 @@ class FileUtilities:
 
                     versioned_files.append(file_info)
 
-                return versioned_files
+                return versioned_files, file_category
             else:
-                return None
+                return None, None
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred while listing the versioned files: {e}")

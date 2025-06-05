@@ -13,15 +13,15 @@ logger = logging.getLogger()
 db_config = {
         "dbname": "postgres",
         "user": "postgres",
-        "password": "secret",
+        "password": "postgres",
         "host": "localhost",
-        "port": 5433,
+        "port": 5432,
     }
 
 
-FOLDER_PATH_ASSIST = os.getenv("DESTINATION_PATH_ASSIST", r"D:\DESTINATION_PATH\ASSIST")
-FOLDER_PATH_DAaas = os.getenv("DESTINATION_PATH_DAaas", r"D:\DESTINATION_PATH\DAaas")
-FOLDER_PATH_DAaas_How_to = os.getenv("DESTINATION_PATH_DAaas_How_to", r"D:\DESTINATION_PATH\DAaas How to")
+FOLDER_PATH_ASSIST = os.getenv("DESTINATION_PATH_ASSIST", r"C:\DESTINATION_PATH\ASSIST")
+FOLDER_PATH_DAaas = os.getenv("DESTINATION_PATH_DAaas", r"C:\DESTINATION_PATH\DAaas")
+FOLDER_PATH_DAaas_How_to = os.getenv("DESTINATION_PATH_DAaas_How_to", r"C:\DESTINATION_PATH\DAaas How to")
 
 categories = {
     "ASSIST": FOLDER_PATH_ASSIST,

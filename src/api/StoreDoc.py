@@ -22,6 +22,7 @@ class FileUploader:
         self.file_utilities = FileUtilities()
         self.file = file
         self.flag = False
+        self.file_category = 0
 
     def upload_single_file(self):
         """
@@ -40,7 +41,7 @@ class FileUploader:
 
         # Check if the file version already exists
         logger.info(f"Checking if the file version {self.file.name} already exists in the destination folder...")
-        versioned_files = self.file_utilities.list_versioned_files(self.file.name, self.base_path_upload)
+        versioned_files, self.file_category = self.file_utilities.list_versioned_files(self.file.name, self.base_path_upload)
 
         if versioned_files:
             self.file_utilities.remove_file(self.file.name, self.base_path_upload)
@@ -111,6 +112,11 @@ class FileUploader:
 
             FileMetadataDatabaseUtility().insert_file_info(metadata_dict, file_category=self.category)
             logger.info(f"Metadata stored successfully for {self.file.name}")
+
+            # Update file category
+            FileMetadataDatabaseUtility().update_file_category(
+                metadata_dict['file_hash'], self.file_category
+            )
 
             return "File uploaded successfully!", self.flag
         except Exception as e:

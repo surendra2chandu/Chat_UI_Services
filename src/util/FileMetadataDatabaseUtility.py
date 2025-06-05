@@ -137,11 +137,12 @@ class FileMetadataDatabaseUtility:
 
         :return: A list of all file names.
         """
+
         try:
             logger.info("Retrieving all file names from the database.")
-            select_query = "SELECT file_name FROM file_properties;"
+            select_query = "SELECT file_name, category FROM file_properties;"
             self.cursor.execute(select_query)
-            file_names = [row[0] for row in self.cursor.fetchall()]
+            file_names = [row for row in self.cursor.fetchall()]
             return file_names
 
         except Exception as e:
@@ -152,6 +153,30 @@ class FileMetadataDatabaseUtility:
             self.cursor.close()
             # Close the connection
             self.conn.close()
+
+    def update_file_category(self, file_hash,  new_category: str):
+        """
+        Update the category of a file based on its hash.
+
+        :param file_hash: The hash of the file to update.
+        :param new_category: The new category to assign to the file.
+        :return: None
+        """
+        try:
+            logger.info(f"Updating category for file with hash: {file_hash} to {new_category}")
+            update_query = "UPDATE file_properties SET category = %s WHERE file_hash = %s;"
+            self.cursor.execute(update_query, (new_category, file_hash))
+            self.conn.commit()
+
+        except Exception as e:
+            logger.error(f"Error updating file category: {e}")
+            raise HTTPException(status_code=500, detail=f"An error occurred during file category update: {e}")
+        finally:
+            # Close the cursor
+            self.cursor.close()
+            # Close the connection
+            self.conn.close()
+
 
 
 if __name__ == "__main__":

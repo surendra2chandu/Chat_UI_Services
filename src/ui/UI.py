@@ -1,7 +1,7 @@
 # Import necessary libraries
 import sys
 # For local testing
-sys.path.append(r'D:\Git\ARES_Chat_UI_Services')
+sys.path.append(r'C:\PycharmProjects\ARES_Chat_UI_Services')
 
 # For container testing
 # sys.path.append(r'/code')
