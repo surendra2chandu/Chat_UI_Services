@@ -26,6 +26,7 @@ class FileMetadataDatabaseUtility:
         # Create the table if it doesn't exist
         self.__create_table()
 
+    # Create the file_properties table
     def __create_table(self):
         """
         Create the file_metadata table if it doesn't exist.
@@ -48,8 +49,8 @@ class FileMetadataDatabaseUtility:
                         created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         created_by TEXT,
                         version_file TEXT DEFAULT '0',
-                        category SERIAL
-                        
+                        category_id integer
+
                     );
                """)
 
@@ -57,12 +58,14 @@ class FileMetadataDatabaseUtility:
             logger.error(f"Error during table creation: {e}")
             raise HTTPException(status_code=500, detail=f"An error occurred during table creation: {e}")
 
-    def insert_file_info(self, file_info: dict, file_category: str):
+    # Insert file metadata into the database
+    def insert_file_info(self, file_info: dict, file_category: str, category_id: int):
         """
         Insert file metadata into the database.
 
         :param file_info: A dictionary containing file metadata.
         :param file_category: The category of the file.
+        :param category_id: The ID of the category.
         :return: None
         """
         try:
@@ -73,10 +76,11 @@ class FileMetadataDatabaseUtility:
                   file_name, file_type,file_category, file_size, 
                   source_path, destination_path,
                   file_creation_date, file_modified_date, 
-                  file_hash, created_on, created_by, version_file
-              )VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                  file_hash, created_on, created_by, version_file, category_id
+              )VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
             """
 
+            # Prepare the values to be inserted
             values = (
                 file_info['file_name'],
                 file_info['file_type'],
@@ -89,7 +93,9 @@ class FileMetadataDatabaseUtility:
                 file_info['file_hash'],
                 file_info['created_on'],
                 file_info['created_by'],
-                file_info.get('version_file', None)
+                file_info.get('version_file', '0'),
+                category_id
+
 
             )
             self.cursor.execute(insert_query, values)
@@ -105,6 +111,7 @@ class FileMetadataDatabaseUtility:
             # Close the connection
             self.conn.close()
 
+    # Check if the file hash already exists in the database
     def check_file_hash(self, file_hash: str):
         """
         Check if the file hash already exists in the database.
@@ -131,16 +138,17 @@ class FileMetadataDatabaseUtility:
             # Close the connection
             self.conn.close()
 
-    def get_all_file_names(self):
+    # Retrieve all file names and their associated categories from the database
+    def get_all_file_names_and_categories(self):
         """
-        Retrieve all file names from the database.
+        Retrieve all file names and their associated categories from the database.
 
         :return: A list of all file names.
         """
 
         try:
             logger.info("Retrieving all file names from the database.")
-            select_query = "SELECT file_name, category FROM file_properties;"
+            select_query = "SELECT file_name, category_id FROM file_properties;"
             self.cursor.execute(select_query)
             file_names = [row for row in self.cursor.fetchall()]
             return file_names
@@ -154,32 +162,9 @@ class FileMetadataDatabaseUtility:
             # Close the connection
             self.conn.close()
 
-    def update_file_category(self, file_hash,  new_category: str):
-        """
-        Update the category of a file based on its hash.
-
-        :param file_hash: The hash of the file to update.
-        :param new_category: The new category to assign to the file.
-        :return: None
-        """
-        try:
-            logger.info(f"Updating category for file with hash: {file_hash} to {new_category}")
-            update_query = "UPDATE file_properties SET category = %s WHERE file_hash = %s;"
-            self.cursor.execute(update_query, (new_category, file_hash))
-            self.conn.commit()
-
-        except Exception as e:
-            logger.error(f"Error updating file category: {e}")
-            raise HTTPException(status_code=500, detail=f"An error occurred during file category update: {e}")
-        finally:
-            # Close the cursor
-            self.cursor.close()
-            # Close the connection
-            self.conn.close()
-
-
 
 if __name__ == "__main__":
+
     # Example usage
     file_metadata_db = FileMetadataDatabaseUtility()
 
