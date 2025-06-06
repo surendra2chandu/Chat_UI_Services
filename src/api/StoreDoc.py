@@ -11,25 +11,26 @@ class FileUploader:
     A class to handle file uploads and metadata extraction.
     """
 
-    def __init__(self, category, file: UploadFile):
+    def __init__(self, file_category, file: UploadFile):
         """
         Initialize the FileUploader with a specified upload path.
-        :param category: The category of the file being uploaded.
+        :param file_category: The category of the file being uploaded.
         :param file: The file to be uploaded.
         """
-        self.category = category
-        self.base_path_upload = categories[category]
+        self.file_category = file_category
+        self.base_path_upload = categories[file_category]
         self.file_utilities = FileUtilities()
         self.file = file
         self.flag = False
-        self.file_category = 0
+        self.category_id = 1
 
+    # Upload a single file and extract its metadata.
     def upload_single_file(self):
         """
         Upload a single file and extract its metadata.
         :return: A tuple (message, flag) indicating the result.
         """
-        # 🔁 Reset pointer before file operations
+        # Reset pointer before file operations
         self.file.seek(0)
 
         # Save the file in the destination folder
@@ -39,10 +40,11 @@ class FileUploader:
         metadata_dict = self.file_utilities.get_metadata(self.file.name, self.base_path_upload)
         logger.info(f"Metadata extracted successfully for {self.file.name}")
 
-        # Check if the file version already exists
+        # Add version information to the metadata and category ID
         logger.info(f"Checking if the file version {self.file.name} already exists in the destination folder...")
-        versioned_files, self.file_category = self.file_utilities.list_versioned_files(self.file.name, self.base_path_upload)
+        versioned_files, self.category_id = self.file_utilities.list_versioned_files(self.file.name, self.base_path_upload)
 
+        # Add version information to the metadata
         if versioned_files:
             self.file_utilities.remove_file(self.file.name, self.base_path_upload)
 
@@ -76,7 +78,7 @@ class FileUploader:
                 self.file_utilities.remove_file(self.file.name, self.base_path_upload)
                 return f"File {self.file.name} already exists in the database.", self.flag
 
-            FileMetadataDatabaseUtility().insert_file_info(metadata_dict, file_category=self.category)
+            FileMetadataDatabaseUtility().insert_file_info(metadata_dict, file_category=self.file_category, category_id=self.category_id)
             logger.info(f"Metadata stored successfully for {self.file.name}")
 
             return "File uploaded successfully!", self.flag
@@ -85,6 +87,7 @@ class FileUploader:
             logger.error(f"Error storing metadata: {e}")
             raise HTTPException(status_code=500, detail=f"Error storing metadata: {e}")
 
+    # Insert metadata into the database after confirmation.
     def insert_metadata(self):
         """
         Insert metadata into the database after confirmation.
@@ -100,6 +103,7 @@ class FileUploader:
         metadata_dict = self.file_utilities.get_metadata(self.file.name, self.base_path_upload)
         logger.info(f"Metadata extracted successfully for {self.file.name}")
 
+
         metadata_dict['version_file'] = self.file_utilities.extract_version(self.file.name)
 
         # Store metadata in the database
@@ -110,15 +114,11 @@ class FileUploader:
                 self.file_utilities.remove_file(self.file.name, self.base_path_upload)
                 return f"File {self.file.name} already exists in the database.", self.flag
 
-            FileMetadataDatabaseUtility().insert_file_info(metadata_dict, file_category=self.category)
+            FileMetadataDatabaseUtility().insert_file_info(metadata_dict, file_category=self.file_category, category_id=self.category_id)
             logger.info(f"Metadata stored successfully for {self.file.name}")
 
-            # Update file category
-            FileMetadataDatabaseUtility().update_file_category(
-                metadata_dict['file_hash'], self.file_category
-            )
-
             return "File uploaded successfully!", self.flag
+
         except Exception as e:
             self.file_utilities.remove_file(self.file.name, self.base_path_upload)
             logger.error(f"Error storing metadata: {e}")
@@ -127,6 +127,7 @@ class FileUploader:
 
 # Local testing
 if __name__ == "__main__":
+
     sample_file = UploadFile(
         filename="Scan May 5, 2025.pdf",
         file=BytesIO(open(r"C:\Users\Karnatapus\Downloads\Scan May 5, 2025.pdf", 'rb').read())
