@@ -3,19 +3,23 @@ from datetime import datetime, timezone
 import pathlib
 import hashlib
 from fastapi import HTTPException
-from src.conf.Configurations import logger,categories
+from src.conf.Configurations import logger
 import shutil
 from src.util.FileMetadataDatabaseUtility import FileMetadataDatabaseUtility
 import re
 
-
 class FileUtilities:
+    """
+    This class provides utility functions for file operations such as metadata extraction, file saving, and version management.
+    It includes methods to compute file hashes, search for files, and manage file versions.
+    """
     def __init__(self):
         """
         This function initializes the FileUtilities class.
         """
         self.logger = logger
 
+    # This function converts the time from epoch to datetime format
     def __time_convert(self, a_time):
         """
         Convert the time from epoch to datetime
@@ -26,6 +30,7 @@ class FileUtilities:
         return datetime.fromtimestamp(a_time).strftime('%Y-%m-%d %H:%M:%S')
 
 
+    # This function formats the size from bytes to KB
     def __size_format(self, size):
         """
         Convert the size from bytes to KB
@@ -36,6 +41,7 @@ class FileUtilities:
         new_form = format(size / 1024, ".2f")
         return str(new_form)
 
+    # This function computes the hash of a file using the specified algorithm
     def __compute_hash(self, file_path, algorithm='md5'):
         """
         Compute the hash of a file using the given algorithm
@@ -43,9 +49,7 @@ class FileUtilities:
         :param file_path: The path of the file
         :param algorithm: The hashing algorithm to use
         :return: The hash of the file
-
         """
-
         # Create a hash object
         if algorithm == 'md5':
             hasher = hashlib.md5()
@@ -62,6 +66,7 @@ class FileUtilities:
 
         return hasher.hexdigest()
 
+    # This function searches for a file in the given folder path
     def __search_file(self, file_name, folder_path):
         """
         Search for a file in the given folder path
@@ -69,7 +74,6 @@ class FileUtilities:
         :param file_name: The name of the file to search for
         :param folder_path: The folder path to search in
         :return: A list of file names
-
         """
         names = []
 
@@ -85,6 +89,7 @@ class FileUtilities:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred while searching for the file in directory: {e}")
 
+    # This function gets the metadata of a file
     def get_metadata(self, file_name, folder_path):
         """
         Get the metadata of a file
@@ -92,13 +97,13 @@ class FileUtilities:
         :param file_name: The name of the file to get the metadata of
         :param folder_path: The folder path to search in
         :return: A dictionary with the metadata of the file
-
         """
         try:
             # Create the file path using os.path.join
             filepath = f'{folder_path}{os.sep}{file_name}'
             stats = os.stat(filepath)
 
+            # Get file metadata
             dict_info = {
                 'file_name': file_name,
                 'source_path': folder_path,
@@ -110,20 +115,20 @@ class FileUtilities:
                 'file_hash': self.__compute_hash(filepath),
                 'created_on': datetime.now(tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
                 'created_by': 'SYSTEM',
-                'version_file': self.extract_version(file_name)
+                'version_file': 0
             }
 
             return dict_info
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred while getting the metadata: {e}")
 
+    # This function gets the created and modified dates of a file
     def __get_created_and_modified_dates(self, name, folder_path):
         """
         Get the created and modified dates of a file
         :param name: The name of the file to get the dates of
         :param folder_path: The folder path to search in
         :return: A dictionary with the created and modified dates of the file
-
         """
 
         try:
@@ -141,6 +146,7 @@ class FileUtilities:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred while getting the dates: {e}")
 
+    # This function checks if the file already exists in the destination folder
     def has_file_in_destination_folder(self, filename, folder_path):
         """
         Check if the file already exists in the destination folder
@@ -155,6 +161,7 @@ class FileUtilities:
         else:
             return f"File {filename} already exists in {folder_path}. Please upload another file."
 
+    # This function saves the file in the destination folder
     def save_file_in_destination_folder(self, file, base_path_upload):
         """
         Save the file in the destination folder
@@ -173,31 +180,32 @@ class FileUtilities:
             self.logger.error(f"Error saving file: {e}")
             raise HTTPException(status_code=500, detail="Error saving file")
 
+    # This function lists all versioned files in the given folder path that match the file name
     def list_versioned_files(self, file_name, folder_path):
         """
-        List all versioned files in the given folder path
-
-        :param file_name: The name of the file to list
+        List all versioned files in the given folder path that match the file name
+        :param file_name: The name of the file to search for
         :param folder_path: The folder path to search in
-        :return: A tuple containing a list of versioned files and their category
-
+        :return: A list of dictionaries with the file names and their created and modified dates, and the category ID
         """
         # files = os.listdir(folder_path)
-        file_records = FileMetadataDatabaseUtility().get_all_file_names()
+        file_records = FileMetadataDatabaseUtility().get_all_file_names_and_categories()
 
         file_dict = {name: category for name, category in file_records}
 
         if file_name in file_dict.keys():
             file_dict.pop(file_name)
 
+        category = max(list(file_dict.values()), default=0) + 1
+
         names = []
         try:
             file_name_with_out_ext = file_name.split('.')[0]
 
-            for name, category in file_dict.items():
+            for name, cat in file_dict.items():
                 if file_name_with_out_ext == name.split('.')[0]:
                     names.append(name)
-                    file_category = category
+                    category = cat
 
             if names:
                 versioned_files = []
@@ -207,13 +215,14 @@ class FileUtilities:
 
                     versioned_files.append(file_info)
 
-                return versioned_files, file_category
+                return versioned_files, category
             else:
-                return None, None
+                return None, category
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred while listing the versioned files: {e}")
 
+    # This function removes the file from the given folder path
     def remove_file(self, file_name, folder_path):
         """
         Remove the file from the given folder path
@@ -233,6 +242,7 @@ class FileUtilities:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred while removing the file: {e}")
 
+    # This function gets the created and modified dates of a file
     def get_dates(self, file_name, folder_path):
         """
         Get the created and modified dates of a file
@@ -246,6 +256,7 @@ class FileUtilities:
 
         return res
 
+    # This function extracts the version number from the filename
     def extract_version(self, filename):
 
         """
@@ -266,6 +277,7 @@ class FileUtilities:
         return '0'
 
 if __name__ == "__main__":
+
     # Example usage
     file_utilities = FileUtilities()
     sample_folder_path = r"D:\DESTINATION_PATH"
