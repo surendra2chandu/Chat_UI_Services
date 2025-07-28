@@ -93,7 +93,7 @@ class FileUploader:
         Insert metadata into the database after confirmation.
         :return: A tuple (message, flag) indicating the result.
         """
-        # 🔁 Reset pointer before file operations
+        # Reset pointer before file operations
         self.file.seek(0)
 
         # Save the file in the destination folder
