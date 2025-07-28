@@ -1,29 +1,25 @@
-from azure.identity import DefaultAzureCredential
-from msgraph.core import GraphClient
+import requests
+from azure.identity import InteractiveBrowserCredential
 
-# Authenticate with Azure CLI or environment
-credential = DefaultAzureCredential()
-client = GraphClient(credential=credential)
+# Step 1: Authenticate and get token for Microsoft Graph
+credential = InteractiveBrowserCredential()
+token = credential.get_token("https://graph.microsoft.com/.default").token
 
-# Get current user details
-me_response = client.get('/me')
-me = me_response.json()
+# Step 2: Set headers for Microsoft Graph API call
+headers = {
+    "Authorization": f"Bearer {token}"
+}
 
-print("=== Current Azure User ===")
-print("Name:", me.get("displayName"))
-print("Email:", me.get("mail") or me.get("userPrincipalName"))
-print("Job Title:", me.get("jobTitle"))
-print("ID:", me.get("id"))
+# Step 3: Call /me endpoint to get current user info
+response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
 
-# Get user group memberships
-group_response = client.get('/me/memberOf')
-groups = group_response.json().get("value", [])
-
-print("\n=== Group Memberships ===")
-if not groups:
-    print("No groups found.")
+if response.status_code == 200:
+    user = response.json()
+    print("=== Current Azure User ===")
+    print("Display Name:", user.get("displayName"))
+    print("Email:", user.get("mail") or user.get("userPrincipalName"))
+    print("Job Title:", user.get("jobTitle"))
+    print("User ID:", user.get("id"))
 else:
-    for group in groups:
-        name = group.get("displayName")
-        if name:
-            print("-", name)
+    print("Error:", response.status_code)
+    print(response.text)
