@@ -1,16 +1,18 @@
 import requests
-from azure.identity import InteractiveBrowserCredential
+from azure.identity import AzureCliCredential
 
-# Step 1: Authenticate and get a token
-credential = InteractiveBrowserCredential()
+# Use the Azure CLI logged-in user
+credential = AzureCliCredential()
+
+# Get the token silently
 token = credential.get_token("https://graph.microsoft.com/.default").token
 
-# Step 2: Set up headers for Microsoft Graph API
+# Set headers
 headers = {
     "Authorization": f"Bearer {token}"
 }
 
-# Step 3: Get current user details
+# Get current user info
 user_response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
 if user_response.status_code == 200:
     user = user_response.json()
@@ -21,9 +23,10 @@ if user_response.status_code == 200:
     print("User ID:", user.get("id"))
 else:
     print("Error fetching user info:", user_response.status_code)
+    print(user_response.text)
     exit()
 
-# Step 4: Get group memberships (roles)
+# Get group memberships
 group_response = requests.get("https://graph.microsoft.com/v1.0/me/memberOf", headers=headers)
 if group_response.status_code == 200:
     groups = group_response.json().get("value", [])
