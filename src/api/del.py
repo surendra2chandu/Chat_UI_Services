@@ -1,13 +1,14 @@
-from azure.identity import DefaultAzureCredential
+from azure.identity import AzureCliCredential
 import requests
 
 def get_current_user_info_and_roles():
-    # Authenticate using DefaultAzureCredential
-    credential = DefaultAzureCredential()
+    # Use Azure CLI credential
+    credential = AzureCliCredential()
+
+    # This scope works only with public Azure. For Gov, use https://graph.microsoft.us/.default
     scope = "https://graph.microsoft.com/.default"
     access_token = credential.get_token(scope).token
 
-    # Set request headers
     headers = {
         'Authorization': f'Bearer {access_token}',
         'Content-Type': 'application/json'
