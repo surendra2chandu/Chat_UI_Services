@@ -1,27 +1,26 @@
 from azure.identity import DefaultAzureCredential
-from msgraph.core import GraphClient
+from msgraph import GraphServiceClient
+from msgraph.generated.users.item.user_item_request_builder import UserItemRequestBuilder
 
-# Step 1: Authenticate with Azure
+# Authenticate with Azure
 credential = DefaultAzureCredential()
-client = GraphClient(credential=credential)
+client = GraphServiceClient(credential=credential)
 
-# Step 2: Get current user details
-user_response = client.get('/me')
-user = user_response.json()
-
+# Get current user's profile
+me = client.me.get()
 print("=== Current Azure User ===")
-print("Display Name:", user.get("displayName"))
-print("Email:", user.get("mail") or user.get("userPrincipalName"))
-print("Job Title:", user.get("jobTitle"))
-print("ID:", user.get("id"))
+print("Display Name:", me.display_name)
+print("Email:", me.mail or me.user_principal_name)
+print("Job Title:", me.job_title)
+print("ID:", me.id)
 
-# Step 3: Get user group memberships (roles)
-groups_response = client.get('/me/memberOf')
-groups = groups_response.json().get("value", [])
-
+# Get group memberships
+groups = client.me.member_of.get().value
 print("\n=== Group Memberships ===")
 if not groups:
     print("No groups found.")
 else:
     for group in groups:
-        print("-", group.get("displayName"))
+        display_name = getattr(group, "display_name", None)
+        if display_name:
+            print("-", display_name)
