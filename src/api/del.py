@@ -1,47 +1,27 @@
-from azure.identity import AzureCliCredential
-import requests
+from azure.identity import DefaultAzureCredential
+from msgraph.core import GraphClient
 
-def get_current_user_info_and_roles():
-    # Use Azure CLI credential
-    credential = AzureCliCredential()
+# Step 1: Authenticate with Azure
+credential = DefaultAzureCredential()
+client = GraphClient(credential=credential)
 
-    # This scope works only with public Azure. For Gov, use https://graph.microsoft.us/.default
-    scope = "https://graph.microsoft.com/.default"
-    access_token = credential.get_token(scope).token
+# Step 2: Get current user details
+user_response = client.get('/me')
+user = user_response.json()
 
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Content-Type': 'application/json'
-    }
+print("=== Current Azure User ===")
+print("Display Name:", user.get("displayName"))
+print("Email:", user.get("mail") or user.get("userPrincipalName"))
+print("Job Title:", user.get("jobTitle"))
+print("ID:", user.get("id"))
 
-    # Step 1: Get current user details
-    me_url = "https://graph.microsoft.com/v1.0/me"
-    me_response = requests.get(me_url, headers=headers)
-    if me_response.status_code != 200:
-        print("Failed to fetch user info:", me_response.text)
-        return
-    me_data = me_response.json()
+# Step 3: Get user group memberships (roles)
+groups_response = client.get('/me/memberOf')
+groups = groups_response.json().get("value", [])
 
-    print("🔹 User Name:", me_data.get("displayName"))
-    print("🔹 User Principal Name:", me_data.get("userPrincipalName"))
-
-    # Step 2: Get current user roles (directory roles)
-    roles_url = "https://graph.microsoft.com/v1.0/me/memberOf"
-    roles_response = requests.get(roles_url, headers=headers)
-    if roles_response.status_code != 200:
-        print("Failed to fetch roles:", roles_response.text)
-        return
-    roles_data = roles_response.json()
-
-    print("\n🔸 Assigned Azure AD Roles:")
-    roles = roles_data.get("value", [])
-    if not roles:
-        print("No roles assigned.")
-    else:
-        for role in roles:
-            role_name = role.get("displayName")
-            if role_name:
-                print("-", role_name)
-
-if __name__ == "__main__":
-    get_current_user_info_and_roles()
+print("\n=== Group Memberships ===")
+if not groups:
+    print("No groups found.")
+else:
+    for group in groups:
+        print("-", group.get("displayName"))
