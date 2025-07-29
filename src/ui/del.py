@@ -1,43 +1,47 @@
 import requests
-from azure.identity import AzureCliCredential
+from azure.identity import InteractiveBrowserCredential, AzureAuthorityHosts
 
-# Use the Azure CLI logged-in user
-credential = AzureCliCredential()
+# Step 1: Use the Gov Cloud authority host
+credential = InteractiveBrowserCredential(
+    authority=AzureAuthorityHosts.AZURE_GOVERNMENT
+)
 
-# Get the token silently
-token = credential.get_token("https://graph.microsoft.com/.default").token
+# Step 2: Get token for ARM and Graph in US Gov Cloud
+arm_token = credential.get_token("https://management.usgovcloudapi.net/.default").token
+graph_token = credential.get_token("https://graph.microsoft.us/.default").token
 
-# Set headers
-headers = {
-    "Authorization": f"Bearer {token}"
+# Step 3: Get current user object ID from Microsoft Graph (US Gov)
+graph_headers = {"Authorization": f"Bearer {graph_token}"}
+me_response = requests.get("https://graph.microsoft.us/v1.0/me", headers=graph_headers)
+user = me_response.json()
+user_id = user.get("id")
+print("Logged-in User:", user.get("displayName"))
+print("Object ID:", user_id)
+
+# Inputs for RBAC lookup
+subscription_id = "your-subscription-id"  # Replace
+resource_group = "DAaaS"
+scope = f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}"
+
+# Step 4: Get role assignments from ARM (US Gov)
+role_assignments_url = f"https://management.usgovcloudapi.net{scope}/providers/Microsoft.Authorization/roleAssignments?api-version=2022-04-01"
+arm_headers = {
+    "Authorization": f"Bearer {arm_token}",
+    "Content-Type": "application/json"
 }
+response = requests.get(role_assignments_url, headers=arm_headers)
+assignments = response.json().get("value", [])
 
-# Get current user info
-user_response = requests.get("https://graph.microsoft.com/v1.0/me", headers=headers)
-if user_response.status_code == 200:
-    user = user_response.json()
-    print("=== Current Azure User ===")
-    print("Display Name:", user.get("displayName"))
-    print("Email:", user.get("mail") or user.get("userPrincipalName"))
-    print("Job Title:", user.get("jobTitle"))
-    print("User ID:", user.get("id"))
-else:
-    print("Error fetching user info:", user_response.status_code)
-    print(user_response.text)
-    exit()
-
-# Get group memberships
-group_response = requests.get("https://graph.microsoft.com/v1.0/me/memberOf", headers=headers)
-if group_response.status_code == 200:
-    groups = group_response.json().get("value", [])
-    print("\n=== Group Memberships / Roles ===")
-    if not groups:
-        print("No groups found.")
-    else:
-        for group in groups:
-            name = group.get("displayName") or group.get("id")
-            type_ = group.get("@odata.type", "").split(".")[-1]
-            print(f"- {name} ({type_})")
-else:
-    print("Error fetching groups:", group_response.status_code)
-    print(group_response.text)
+# Step 5: Resolve roleDefinitionId to role names
+print(f"\n=== RBAC Roles on Resource Group: {resource_group} ===")
+for assignment in assignments:
+    props = assignment.get("properties", {})
+    if props.get("principalId", "").lower() == user_id.lower():
+        role_def_id = props.get("roleDefinitionId").split("/")[-1]
+        role_def_url = f"https://management.usgovcloudapi.net{scope}/providers/Microsoft.Authorization/roleDefinitions/{role_def_id}?api-version=2022-04-01"
+        role_def_resp = requests.get(role_def_url, headers=arm_headers)
+        if role_def_resp.status_code == 200:
+            role_name = role_def_resp.json()["properties"]["roleName"]
+            print(f"- {role_name} (Role ID: {role_def_id})")
+        else:
+            print(f"- Unknown role ID: {role_def_id}")
