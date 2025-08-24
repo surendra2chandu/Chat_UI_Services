@@ -162,6 +162,57 @@ class FileMetadataDatabaseUtility:
             # Close the connection
             self.conn.close()
 
+    def insert_file_obj(self):
+        """
+        Insert a file object into the database.
+        :return: None
+        CREATE TABLE document_blob (
+            id SERIAL PRIMARY KEY,
+            data BYTEA,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+
+        """
+        try:
+            with open("C:\\SOURCE_PATH\\abc.pdf", 'rb') as f:
+                file_data = f.read()
+
+            self.cursor.execute(
+                "INSERT INTO document_blob (data) VALUES (%s)",
+                (Binary(file_data),)
+            )
+            self.conn.commit()
+            print(f"File inserted successfully..")
+
+        except (Exception, psycopg2.Error) as error:
+            print(f"Error inserting file: {error}")
+
+        finally:
+            if self.conn:
+                self.cursor.close()
+                self.conn.close()
+
+    def read_file_obj(self):
+        """
+        Read a file object from the database.
+        :return: The file data.
+        """
+        try:
+            self.cursor.execute("SELECT data FROM document_blob WHERE id = %s", (1,))
+            file_data = self.cursor.fetchone()[0]
+
+            with open("C:\\DESTINATION_PATH\\surendra.pdf", 'wb') as f:
+                f.write(file_data)
+
+            print(f"File read and saved successfully..")
+
+        except (Exception, psycopg2.Error) as error:
+            print(f"Error reading file: {error}")
+
+        finally:
+            if self.conn:
+                self.cursor.close()
+                self.conn.close()
 
 if __name__ == "__main__":
 
